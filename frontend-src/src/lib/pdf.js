@@ -120,7 +120,7 @@ export async function generateOfficialPdf(report, points) {
   for(let i=0;i<aLabels.length;i++){
     page.drawRectangle({x:ax,y:y-afH,width:aCols[i],height:afH,borderColor:rgb(0,0,0),borderWidth:0.5})
     aLabels[i].split('\n').forEach((l,li)=>page.drawText(l,{x:ax+3,y:y-14-li*11,size:7,font:i===0?hv:h}))
-    if(i>0 && report.afati===aKeys[i]) page.drawText('✓',{x:ax+aCols[i]/2-4,y:y-afH+8,size:14,font:hv})
+    if(i>0 && report.afati===aKeys[i]) page.drawText('X',{x:ax+aCols[i]/2-4,y:y-afH+8,size:14,font:hv})
     ax+=aCols[i]
   }
   y -= afH
