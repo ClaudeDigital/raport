@@ -31,9 +31,8 @@ function drawCheck(page, cx, cy, size = 11, color = rgb(0, 0, 0), thickness = 1.
   page.drawLine({ start: p2, end: p3, thickness, color })
 }
 
-// ── PDF 1: Formulari zyrtar ──
-export async function generateOfficialPdf(report, points) {
-  const doc = await PDFDocument.create()
+// ── Faqja 1: Formulari zyrtar (shtohet te një PDFDocument ekzistues) ──
+async function buildOfficialPage(doc, report, points) {
   const page = doc.addPage([595, 842])
   const { width, height } = page.getSize()
   const hv = await doc.embedFont(StandardFonts.HelveticaBold)
@@ -148,14 +147,10 @@ export async function generateOfficialPdf(report, points) {
   page.drawRectangle({x:m+80,y:y-30,width:width-2*m-160,height:30,borderColor:rgb(0,0,0),borderWidth:0.5})
   page.drawText('"Nma" shpk',{x:width/2-30,y:y-12,size:8,font:hv})
   page.drawText('info@nma-ks.com , +383 44 119 009',{x:width/2-65,y:y-24,size:8,font:h})
-
-  const bytes=await doc.save()
-  return { blob: new Blob([bytes],{type:'application/pdf'}), filename: `Raport_${san(report.objekti)}.pdf` }
 }
 
-// ── PDF 2: Dokumentimi me foto ──
-export async function generateDocPdf(report, blocks) {
-  const doc = await PDFDocument.create()
+// ── Faqet e dokumentimit me foto (shtohen te një PDFDocument ekzistues) ──
+async function buildDocPages(doc, report, blocks) {
   const hv = await doc.embedFont(StandardFonts.HelveticaBold)
   const hf = await doc.embedFont(StandardFonts.Helvetica)
   const m = 36, pw = 595-2*m
@@ -202,13 +197,42 @@ export async function generateDocPdf(report, blocks) {
     page.drawLine({start:{x:m,y:y-4},end:{x:595-m,y:y-4},thickness:0.3,color:rgb(0.8,0.8,0.8)})
     y -= 14
   }
+}
 
-  const bytes=await doc.save()
+// ── PDF i kombinuar: formulari zyrtar + dokumentimi, NJË skedar i vetëm ──
+export async function generateCombinedPdf(report, points, blocks) {
+  const doc = await PDFDocument.create()
+  await buildOfficialPage(doc, report, points)
+  if (blocks?.length) await buildDocPages(doc, report, blocks)
+  const bytes = await doc.save()
+  return { blob: new Blob([bytes],{type:'application/pdf'}), filename: `Raport_${san(report.objekti)}.pdf` }
+}
+
+// Ruajtur për përdorim eventual më vete (jo më të përdorura nga UI-ja kryesore)
+export async function generateOfficialPdf(report, points) {
+  const doc = await PDFDocument.create()
+  await buildOfficialPage(doc, report, points)
+  const bytes = await doc.save()
+  return { blob: new Blob([bytes],{type:'application/pdf'}), filename: `Raport_${san(report.objekti)}.pdf` }
+}
+export async function generateDocPdf(report, blocks) {
+  const doc = await PDFDocument.create()
+  await buildDocPages(doc, report, blocks)
+  const bytes = await doc.save()
   return { blob: new Blob([bytes],{type:'application/pdf'}), filename: `Raport_${san(report.objekti)}_Inspektimi.pdf` }
 }
 
+// Shkarkim i vërtetë te disku: ankora duhet të jetë në DOM dhe revoke-u i
+// vonuar — disa browser (sidomos Firefox/mobile) nuk e ruajnë skedarin nëse
+// klikohet jashtë DOM-it ose nëse URL-ja revokohet menjëherë.
 export function downloadBlob(blob, filename) {
-  const url=URL.createObjectURL(blob)
-  const a=document.createElement('a'); a.href=url; a.download=filename; a.click()
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
