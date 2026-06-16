@@ -222,11 +222,28 @@ export async function generateDocPdf(report, blocks) {
   return { blob: new Blob([bytes],{type:'application/pdf'}), filename: `Raport_${san(report.objekti)}_Inspektimi.pdf` }
 }
 
+// Samsung Internet e ruan shkarkimet e bëra nga blob: URL (via <a download>)
+// në një vendndodhje të përkohshme që e fshin shpejt — Chrome/Brave/Firefox
+// nuk e kanë këtë problem. Për Samsung Internet hapim PDF-në te vizualizuesi
+// vetë i browser-it (ku ka buton real "Shkarko/Ruaj" i mbështetur nga vetë
+// sistemi) në vend që ta detyrojmë shkarkimin me <a download>.
+export function isSamsungInternet() {
+  return /SamsungBrowser/i.test(navigator.userAgent)
+}
+
 // Shkarkim i vërtetë te disku: ankora duhet të jetë në DOM dhe revoke-u i
-// vonuar — disa browser (sidomos Firefox/mobile) nuk e ruajnë skedarin nëse
+// vonuar — disa browser (sidomos Firefox) nuk e ruajnë skedarin nëse
 // klikohet jashtë DOM-it ose nëse URL-ja revokohet menjëherë.
-export function downloadBlob(blob, filename) {
+// `preOpenedWindow` (opsionale): një tab i hapur paraprakisht në mënyrë
+// sinkrone (brenda click-it, para çdo await) — i nevojshëm për Samsung
+// Internet, që përdor vizualizuesin e vet në vend të <a download>.
+export function downloadBlob(blob, filename, preOpenedWindow) {
   const url = URL.createObjectURL(blob)
+  if (preOpenedWindow) {
+    preOpenedWindow.location.href = url
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+    return
+  }
   const a = document.createElement('a')
   a.href = url
   a.download = filename

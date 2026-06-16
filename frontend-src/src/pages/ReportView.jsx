@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { LOCK_HOURS, AFATET } from '../lib/constants'
-import { generateCombinedPdf, downloadBlob } from '../lib/pdf'
+import { generateCombinedPdf, downloadBlob, isSamsungInternet } from '../lib/pdf'
 
 const fmtDate = d => d ? new Date(d).toLocaleDateString('sq-AL', { day:'2-digit', month:'2-digit', year:'numeric' }) : ''
 const isLocked = ca => Date.now() > new Date(ca).getTime() + LOCK_HOURS * 3600000
@@ -31,13 +31,22 @@ export default function ReportView() {
       .finally(() => setLoading(false))
   }, [id])
 
-  async function handlePdf() {
+  function handlePdf() {
+    // Tab-i hapet KËTU, sinkron brenda click-it (jo pas await-eve) — përndryshe
+    // browser-i e bllokon si popup pasi nuk "duket" më e lidhur me klikimin.
+    const win = isSamsungInternet() ? window.open('', '_blank') : null
+    if (win) win.document.write('<title>Duke përgatitur PDF-në…</title><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;color:#666">Duke përgatitur PDF-në…</body>')
     setGenPdf(true)
-    try {
-      const { blob, filename } = await generateCombinedPdf(report, points, blocks)
-      downloadBlob(blob, filename)
-    } catch(e) { alert('PDF error: '+e.message) }
-    setGenPdf(false)
+    ;(async () => {
+      try {
+        const { blob, filename } = await generateCombinedPdf(report, points, blocks)
+        downloadBlob(blob, filename, win)
+      } catch(e) {
+        win?.close()
+        alert('PDF error: '+e.message)
+      }
+      setGenPdf(false)
+    })()
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Duke ngarkuar...</div>
