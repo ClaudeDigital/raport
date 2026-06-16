@@ -20,6 +20,16 @@ function wrap(text, max) {
   if (cur) lines.push(cur)
   return lines
 }
+// Vizaton një shenjë ✓ si dy vija vektoriale (jo tekst) — shmang çdo problem
+// encoding-u të fonteve standarde (WinAnsi nuk e mbështet karakterin ✓).
+function drawCheck(page, cx, cy, size = 11, color = rgb(0, 0, 0), thickness = 1.6) {
+  const s = size / 11
+  const p1 = { x: cx - 5 * s, y: cy + 1 * s }
+  const p2 = { x: cx - 1 * s, y: cy - 4 * s }
+  const p3 = { x: cx + 6 * s, y: cy + 6 * s }
+  page.drawLine({ start: p1, end: p2, thickness, color })
+  page.drawLine({ start: p2, end: p3, thickness, color })
+}
 
 // ── PDF 1: Formulari zyrtar ──
 export async function generateOfficialPdf(report, points) {
@@ -120,7 +130,7 @@ export async function generateOfficialPdf(report, points) {
   for(let i=0;i<aLabels.length;i++){
     page.drawRectangle({x:ax,y:y-afH,width:aCols[i],height:afH,borderColor:rgb(0,0,0),borderWidth:0.5})
     aLabels[i].split('\n').forEach((l,li)=>page.drawText(l,{x:ax+3,y:y-14-li*11,size:7,font:i===0?hv:h}))
-    if(i>0 && report.afati===aKeys[i]) page.drawText('X',{x:ax+aCols[i]/2-4,y:y-afH+8,size:14,font:hv})
+    if(i>0 && report.afati===aKeys[i]) drawCheck(page, ax+aCols[i]/2, y-afH+9)
     ax+=aCols[i]
   }
   y -= afH
